@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>$PackageId$</id>
+    <version>$version$</version>
+    <authors>Andrey Karpov</authors>
+    <owners>Andrey Karpov</owners>
+    <title>BananaSplit</title>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>    
+    <description>Set of context actions.</description>
+    <copyright>Copyright &#x00A9; 2016 Andrey Karpov</copyright>
+    <tags>resharper</tags>
+    <dependencies>
+      <dependency id="$ReSharperDep$" version="$ReSharperVer$"/>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="output\$configuration$\10.0\**\BananaSplit.dll" target="dotFiles\" />
+    <file src="output\$configuration$\10.0\**\BananaSplit.pdb" target="dotFiles\" />    
+  </files>
+</package>
