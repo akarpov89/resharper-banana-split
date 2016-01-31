@@ -28,16 +28,18 @@ namespace BananaSplit
             myProvider = provider;
         }
 
+        public override string Text => "Inline calls";
+
         protected override Action<ITextControl> ExecutePsiTransaction(ISolution solution, IProgressIndicator progress)
         {
             var block = myProvider.GetSelectedElement<IBlock>().NotNull();
             var statements = block.GetStatementsRange(myProvider.SelectedTreeRange).Statements;
 
-            var invocation = ExtractInvocation(statements[0]);
+            var invocation = ExtractInvocation(statements[0]).NotNull();
 
             for (int i = 1; i < statements.Count - 1; i++)
             {
-                var nextInvocation = ExtractInvocation(statements[i]);
+                var nextInvocation = ExtractInvocation(statements[i]).NotNull();
                 invocation = MergeInvocations(invocation, nextInvocation);
             }
 
@@ -61,14 +63,14 @@ namespace BananaSplit
             };
         }
 
-        private static IInvocationExpression MergeInvocations(IInvocationExpression first, IInvocationExpression next)
+        [NotNull]
+        private static IInvocationExpression MergeInvocations(
+            [NotNull] IInvocationExpression first, [NotNull] IInvocationExpression next)
         {
             var invokedExpression = (IReferenceExpression) next.InvokedExpression;
             invokedExpression.SetQualifierExpression(first);
             return next;
         }
-
-        public override string Text => "Inline calls";
 
         public override bool IsAvailable(IUserDataHolder cache)
         {
@@ -87,7 +89,7 @@ namespace BananaSplit
             return true;
         }
 
-        private bool AreDeclarationsBeforeLastStatement(IList<IStatement> statements)
+        private bool AreDeclarationsBeforeLastStatement([NotNull] IList<IStatement> statements)
         {
             for (int i = 0; i < statements.Count - 1; i++)
             {
@@ -98,7 +100,7 @@ namespace BananaSplit
             return true;
         }
 
-        private bool AreDeclarationsFollowPattern(IList<IStatement> statements)
+        private bool AreDeclarationsFollowPattern([NotNull] IList<IStatement> statements)
         {
             for (int i = 0; i < statements.Count - 2; i++)
             {
@@ -141,7 +143,7 @@ namespace BananaSplit
         }
 
         [CanBeNull]
-        private static ICSharpIdentifier FindLastInvocationUse(IStatement statement, string name)
+        private static ICSharpIdentifier FindLastInvocationUse([NotNull] IStatement statement, [NotNull] string name)
         {
             ICSharpIdentifier lastInvocationUse = null;
 
@@ -159,7 +161,7 @@ namespace BananaSplit
             return lastInvocationUse;
         }
 
-        private static bool IsNoOtherVariableReferences(IList<IStatement> statements, IBlock block)
+        private static bool IsNoOtherVariableReferences([NotNull] IList<IStatement> statements, [NotNull] IBlock block)
         {
             var blockStatements = block.Statements;
             int selectionStart = blockStatements.IndexOf((ICSharpStatement)statements[0]);
@@ -184,7 +186,8 @@ namespace BananaSplit
             return true;
         }
 
-        private static bool IsReferencedExcept(string name, IStatement statement, ICSharpIdentifier exception)
+        private static bool IsReferencedExcept(
+            [NotNull] string name, [NotNull] IStatement statement, [CanBeNull] ICSharpIdentifier exception)
         {
             foreach (var identifier in statement.Descendants<ICSharpIdentifier>())
             {

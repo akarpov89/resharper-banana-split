@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using JetBrains.DocumentModel;
 using JetBrains.ProjectModel;
+using JetBrains.ReSharper.Feature.Services.CSharp.Analyses.Bulbs;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Hotspots;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.LiveTemplates;
 using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.CSharp.Tree;
+using JetBrains.ReSharper.Psi.CSharp.Util;
 using JetBrains.ReSharper.Psi.Tree;
 using JetBrains.ReSharper.Resources.Shell;
 using JetBrains.TextControl;
@@ -75,6 +78,20 @@ namespace BananaSplit
         {
             var calledMethod = invocationExpression.InvocationExpressionReference.Resolve().Result.DeclaredElement as IMethod;
             return method.Equals(calledMethod);
+        }
+
+        [CanBeNull]
+        public static ICSharpTreeNode GetTopLevelNode(this ICSharpContextActionDataProvider myProvider)
+        {
+            var selectedElement = myProvider.GetSelectedElement<ICSharpTreeNode>();
+            return StatementUtil.GetContainingStatementLike(selectedElement);
+        }
+
+        [CanBeNull]
+        public static IInvocationExpression GetInnerInvocation(this IInvocationExpression invocation)
+        {
+            var referenceExpression = invocation.InvokedExpression as IReferenceExpression;
+            return referenceExpression?.QualifierExpression as IInvocationExpression;
         }
     }
 }

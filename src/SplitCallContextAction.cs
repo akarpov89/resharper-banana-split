@@ -34,10 +34,12 @@ namespace BananaSplit
             myFactory = CSharpElementFactory.GetInstance(provider.PsiModule);
         }
 
+        public override string Text => "Split call";
+
         protected override Action<ITextControl> ExecutePsiTransaction(ISolution solution, IProgressIndicator progress)
         {
-            var topLevelNode = GetTopLevelNode().NotNull();
-            var invocation = TryFindInvocationChain(topLevelNode).NotNull();
+            var topLevelNode = myProvider.GetTopLevelNode().NotNull();
+            var invocation = FindInvocationChain(topLevelNode).NotNull();
 
             invocation = ((IInvocationExpression) StatementUtil.EnsureStatementExpression(invocation)).NotNull();
 
@@ -50,25 +52,16 @@ namespace BananaSplit
             return Utils.ExecuteHotspotSession(solution, hotspots);
         }
 
-        public override string Text => "Split call";
-
         public override bool IsAvailable(IUserDataHolder cache)
         {
-            var topLevelNode = GetTopLevelNode();
+            var topLevelNode = myProvider.GetTopLevelNode();
             if (topLevelNode == null) return false;
 
-            return TryFindInvocationChain(topLevelNode) != null;
+            return FindInvocationChain(topLevelNode) != null;
         }
 
         [CanBeNull]
-        private ICSharpTreeNode GetTopLevelNode()
-        {
-            var selectedElement = myProvider.GetSelectedElement<ICSharpTreeNode>();
-            return StatementUtil.GetContainingStatementLike(selectedElement);
-        }
-
-        [CanBeNull]
-        private IInvocationExpression TryFindInvocationChain(ICSharpTreeNode topLevelNode)
+        private static IInvocationExpression FindInvocationChain([NotNull] ICSharpTreeNode topLevelNode)
         {
             foreach (var invocation in topLevelNode.Descendants().OfType<IInvocationExpression>())
             {
@@ -78,35 +71,34 @@ namespace BananaSplit
             return null;
         }
 
-        private static bool HasChainedExpressions(IInvocationExpression invocation) => MatchChain(invocation, 0);
+        private static bool HasChainedExpressions([NotNull] IInvocationExpression invocation) => MatchChain(invocation, 0);
 
-        private static bool MatchChain(IInvocationExpression invocation, int currentInvocationsCount)
+        private static bool MatchChain([NotNull] IInvocationExpression invocation, int currentInvocationsCount)
         {
-            if (currentInvocationsCount + 1 >= 2) return true;
+            while (true)
+            {
+                if (currentInvocationsCount + 1 >= 2) return true;
 
-            var innerInvocation = TryGetInnerInvocation(invocation);
-            if (innerInvocation == null) return false;
+                var innerInvocation = invocation.GetInnerInvocation();
+                if (innerInvocation == null) return false;
 
-            bool isInnerInvocationMatch = MatchChain(innerInvocation, currentInvocationsCount + 1);
-
-            if (!isInnerInvocationMatch) return false;
-
-            return true;
+                invocation = innerInvocation;
+                currentInvocationsCount = currentInvocationsCount + 1;
+            }
         }
-
-        private static IInvocationExpression TryGetInnerInvocation(IInvocationExpression invocation)
-        {
-            var referenceExpression = invocation.InvokedExpression as IReferenceExpression;
-            return referenceExpression?.QualifierExpression as IInvocationExpression;
-        }
-
-        private void SplitInvocation(IInvocationExpression invocation, List<IDeclarationStatement> declarations) =>
-            SplitInvocation(invocation, declarations, new JetHashSet<string>());
 
         private void SplitInvocation(
-            IInvocationExpression invocation, List<IDeclarationStatement> declarations, JetHashSet<string> names)
+            [NotNull] IInvocationExpression invocation, [NotNull] List<IDeclarationStatement> declarations)
         {
-            var innerInvocation = TryGetInnerInvocation(invocation);
+            SplitInvocation(invocation, declarations, new JetHashSet<string>());
+        }
+
+        private void SplitInvocation(
+            [NotNull] IInvocationExpression invocation, 
+            [NotNull] List<IDeclarationStatement> declarations, 
+            [NotNull] JetHashSet<string> names)
+        {
+            var innerInvocation = invocation.GetInnerInvocation();
             if (innerInvocation == null) return;
 
             SplitInvocation(innerInvocation, declarations, names);
@@ -115,8 +107,11 @@ namespace BananaSplit
             SetInvocationTarget(invocation, identifier);
         }
 
+        [NotNull]
         private string AddDeclaration(
-            IInvocationExpression expression, List<IDeclarationStatement> declarations, JetHashSet<string> names)
+            [NotNull] IInvocationExpression expression,
+            [NotNull] List<IDeclarationStatement> declarations, 
+            [NotNull] JetHashSet<string> names)
         {
             string variableName = Utils.NaiveSuggestVariableName(expression, names);
 
@@ -126,14 +121,15 @@ namespace BananaSplit
             return variableName;
         }
 
-        private void SetInvocationTarget(IInvocationExpression invocation, string variableName)
+        private void SetInvocationTarget([NotNull] IInvocationExpression invocation, [NotNull] string variableName)
         {
             var identifier = myFactory.CreateExpression("$0", variableName);
             var referenceExpression = (IReferenceExpression) invocation.InvokedExpression;
             referenceExpression.SetQualifierExpression(identifier);
         }
 
-        private static void InsertDeclarations(IInvocationExpression invocation, List<IDeclarationStatement> declarations)
+        private static void InsertDeclarations(
+            [NotNull] IInvocationExpression invocation, [NotNull] List<IDeclarationStatement> declarations)
         {
             IBlock block = invocation.GetContainingNode<IBlock>(true).NotNull();
             ICSharpStatement anchor = invocation.GetContainingStatement();
@@ -145,8 +141,9 @@ namespace BananaSplit
             }
         }
 
+        [NotNull]
         private static HotspotInfo[] CreateHotspotsForNewVariables(
-            IInvocationExpression invocation, List<IDeclarationStatement> declarations)
+            [NotNull] IInvocationExpression invocation, [NotNull] List<IDeclarationStatement> declarations)
         {
             var hotspots = new HotspotInfo[declarations.Count];
 
@@ -160,13 +157,17 @@ namespace BananaSplit
             return hotspots;
         }
 
-        private static HotspotInfo CreateHotspotForVariable(IDeclarationStatement current, IDeclarationStatement next)
+        [NotNull]
+        private static HotspotInfo CreateHotspotForVariable(
+            [NotNull] IDeclarationStatement current, [NotNull] IDeclarationStatement next)
         {
-            var nextInvocation = (IInvocationExpression) next.VariableDeclarations[0].Initial.FirstChild;
+            var nextInvocation = (IInvocationExpression) next.VariableDeclarations[0].Initial.FirstChild.NotNull();
             return CreateHotspotForVariable(current, nextInvocation);
         }
 
-        private static HotspotInfo CreateHotspotForVariable(IDeclarationStatement current, IInvocationExpression nextInvocation)
+        [NotNull]
+        private static HotspotInfo CreateHotspotForVariable(
+            [NotNull] IDeclarationStatement current, [NotNull] IInvocationExpression nextInvocation)
         {
             var name = current.VariableDeclarations[0].DeclaredName;
             var templateField = new TemplateField(name, new MacroCallExpressionNew(new SuggestVariableNameMacroDef()), 0);
