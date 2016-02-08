@@ -113,6 +113,7 @@ namespace BananaSplit
             [NotNull] List<IDeclarationStatement> declarations, 
             [NotNull] JetHashSet<string> names)
         {
+            // TODO: Use Naming.SuggestionManager
             string variableName = Utils.NaiveSuggestVariableName(expression, names);
 
             var initializer = myFactory.CreateVariableInitializer(expression);
