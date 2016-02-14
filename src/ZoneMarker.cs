@@ -4,6 +4,8 @@ using JetBrains.ReSharper.Psi.CSharp;
 
 namespace BananaSplit
 {
-    [ZoneMarker]
-    public class ZoneMarker : IRequire<ICodeEditingZone>, IRequire<ILanguageCSharpZone> { }
+  [ZoneMarker]
+  public class ZoneMarker : IRequire<ICodeEditingZone>, IRequire<ILanguageCSharpZone>
+  {
+  }
 }
