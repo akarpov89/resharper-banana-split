@@ -21,7 +21,7 @@ namespace BananaSplit
   public abstract class MergeCallChainContextAction : ContextActionBase
   {
     [NotNull] private readonly ICSharpContextActionDataProvider myProvider;
-    [NotNull] protected readonly CSharpElementFactory Factory;
+    
 
     [CanBeNull] private IInvocationExpression myOuterInvocation;
     [CanBeNull] private ICSharpIdentifier myExisingLambdaParameterName;
@@ -31,6 +31,9 @@ namespace BananaSplit
       myProvider = provider;
       Factory = CSharpElementFactory.GetInstance(provider.PsiModule);
     }
+
+    [NotNull]
+    protected CSharpElementFactory Factory { get; }
 
     [NotNull]
     protected abstract string ChainedMethodName { get; }
@@ -57,7 +60,7 @@ namespace BananaSplit
     }
 
     [NotNull]
-    protected abstract ICSharpExpression Merge([NotNull] ICSharpExpression lambdaBody, [NotNull] ICSharpExpression accumulator);
+    protected abstract void Merge([NotNull] ILambdaExpression lambda, [NotNull] ILambdaExpression accumulatorLambda);
 
     [CanBeNull]
     private IInvocationExpression FindChain([NotNull] ITreeNode topLevelNode)
@@ -132,19 +135,19 @@ namespace BananaSplit
 
     private void MergeInvocations([NotNull] IInvocationExpression outerInvocation)
     {
+      // TODO Change merge direction from `outer-to-inner` to `inner-to-outer`
+
       var outerInvocationArgument = outerInvocation.Arguments[0];
 
-      var lambda = outerInvocationArgument.Value as ILambdaExpression;
-      if (lambda == null)
+      var accumulateLambda = outerInvocationArgument.Value as ILambdaExpression;
+      if (accumulateLambda == null)
       {
         var methodGroup = (IReferenceExpression)outerInvocationArgument.Value;
 
-        lambda = CreateLambdaFromMethodGroup(methodGroup, outerInvocation.InvokedExpression);
+        accumulateLambda = CreateLambdaFromMethodGroup(methodGroup, outerInvocation.InvokedExpression);
       }
 
-      var parameter = lambda.ParameterDeclarations[0];
-
-      var accumulateLambdaBody = lambda.BodyExpression;
+      var parameter = accumulateLambda.ParameterDeclarations[0];
 
       var currentInvocation = outerInvocation;
       var invokedExpression = currentInvocation.InvokedExpression;
@@ -157,15 +160,14 @@ namespace BananaSplit
 
         if (!MatchInvocation(currentInvocation, checkValidity: false)) break;
 
-        var lambdaBody = ExtractLambdaBody(currentInvocation, parameter.NameIdentifier);
+        var currentLambda = ExtractLambda(currentInvocation, parameter.NameIdentifier);
 
-        accumulateLambdaBody = Merge(lambdaBody, accumulateLambdaBody);
+        Merge(currentLambda, accumulateLambda);
 
         invokedExpression = currentInvocation.InvokedExpression;
       }
 
-      lambda.SetBodyExpression(accumulateLambdaBody);
-      outerInvocationArgument.SetValue(lambda);
+      outerInvocationArgument.SetValue(accumulateLambda);
 
       outerInvocation.SetInvokedExpression(invokedExpression);
     }
@@ -189,30 +191,33 @@ namespace BananaSplit
     }
 
     [NotNull]
-    private ICSharpExpression ExtractLambdaBody([NotNull] IInvocationExpression invocation, ICSharpIdentifier lambdaParameterName)
+    private ILambdaExpression ExtractLambda([NotNull] IInvocationExpression invocation, ICSharpIdentifier lambdaParameterName)
     {
       var argument = invocation.Arguments[0];
 
-      var filterLambda = argument.Value as ILambdaExpression;
-      if (filterLambda != null)
+      var lambda = argument.Value as ILambdaExpression;
+      if (lambda != null)
       {
-        var parameterName = filterLambda.ParameterDeclarations[0].DeclaredName;
-        var bodyExpression = filterLambda.BodyExpression;
+        var parameterName = lambda.ParameterDeclarations[0].DeclaredName;
+        var bodyExpression = lambda.BodyExpression;
 
         if (parameterName == lambdaParameterName.Name)
         {
-          return bodyExpression;
+          return lambda;
         }
 
-        var declaredParameter = filterLambda.ParameterDeclarations[0];
+        var declaredParameter = lambda.ParameterDeclarations[0];
 
         RenameUsages(declaredParameter.DeclaredElement, bodyExpression, lambdaParameterName);
 
-        return bodyExpression;
+        declaredParameter.SetNameIdentifier(lambdaParameterName);
+
+        return lambda;
       }
 
       var methodGroup = (IReferenceExpression)argument.Value;
-      return Factory.CreateExpression("$0($1)", methodGroup, lambdaParameterName);
+
+      return (ILambdaExpression) Factory.CreateExpression("$0 => $1($0)", lambdaParameterName, methodGroup);
     }
 
     private static void RenameUsages(

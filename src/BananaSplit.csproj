@@ -176,6 +176,7 @@
     </Compile>
     <Compile Include="InlineCallsContextAction.cs" />
     <Compile Include="MergeCallChainContextAction.cs" />
+    <Compile Include="MergeSelectChainContextAction.cs" />
     <Compile Include="MergeWhereChainContextAction.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SplitCallContextAction.cs" />

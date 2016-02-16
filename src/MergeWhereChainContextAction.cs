@@ -17,13 +17,14 @@ namespace BananaSplit
     {
     }
 
-    public override string Text => "Combine subsequent Where";
+    public override string Text => "Merge subsequent Where";
 
     protected override string ChainedMethodName => "Where";
 
-    protected override ICSharpExpression Merge(ICSharpExpression lambdaBody, ICSharpExpression accumulator)
+    protected override void Merge(ILambdaExpression lambda, ILambdaExpression accumulatorLambda)
     {
-      return Factory.CreateExpression("$0 && $1", lambdaBody, accumulator);
+      var newBody = Factory.CreateExpression("$0 && $1", lambda.BodyExpression, accumulatorLambda.BodyExpression);
+      accumulatorLambda.SetBodyExpression(newBody);
     }
   }
 }
