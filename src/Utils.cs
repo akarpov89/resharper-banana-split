@@ -20,7 +20,8 @@ namespace BananaSplit
 {
   internal static class Utils
   {
-    public static string NaiveSuggestVariableName(IInvocationExpression expression, JetHashSet<string> names)
+    public static string NaiveSuggestVariableName(
+      [NotNull] IInvocationExpression expression, [NotNull] JetHashSet<string> names)
     {
       var methodName = ((IReferenceExpression) expression.InvokedExpression).NameIdentifier.Name.Decapitalize();
 
@@ -35,7 +36,8 @@ namespace BananaSplit
       return variableName;
     }
 
-    public static IList<string> SuggestCollectionItemName(ITreeNode collectionNameSource, IDeclaredElement itemNameTarget)
+    public static string SuggestCollectionItemName(
+      [NotNull] ITreeNode collectionNameSource, [NotNull] IDeclaredElement itemNameTarget)
     {
       var psiServices = collectionNameSource.GetPsiServices();
       var suggestionManager = psiServices.Naming.Suggestion;
@@ -55,10 +57,11 @@ namespace BananaSplit
         UniqueNameContext = collectionNameSource.GetContainingNode<ITypeMemberDeclaration>()
       });
 
-      return collection.AllNames();
+      return collection.FirstName();
     }
 
-    public static Action<ITextControl> ExecuteHotspotSession(ISolution solution, HotspotInfo[] hotspots)
+    public static Action<ITextControl> ExecuteHotspotSession(
+      [NotNull] ISolution solution, [NotNull] HotspotInfo[] hotspots)
     {
       return textControl =>
       {
@@ -70,7 +73,7 @@ namespace BananaSplit
       };
     }
 
-    public static bool IsWholeStatementRangeSelected(TextRange selection, IDocument document)
+    public static bool IsWholeStatementRangeSelected(TextRange selection, [NotNull] IDocument document)
     {
       if (selection.StartOffset < 0 || selection.EndOffset < 0) return false;
 
@@ -93,7 +96,7 @@ namespace BananaSplit
       return afterSelectionText.IsNullOrWhitespace();
     }
 
-    public static DocumentCoords GetPositionAfterStatement(IStatement statement, IDocument document)
+    public static DocumentCoords GetPositionAfterStatement([NotNull] IStatement statement, [NotNull] IDocument document)
     {
       int lastStatementEndOffset = statement.GetDocumentRange().TextRange.EndOffset;
       return document.GetCoordsByOffset(lastStatementEndOffset);
@@ -106,14 +109,14 @@ namespace BananaSplit
     }
 
     [CanBeNull]
-    public static ICSharpTreeNode GetTopLevelNode(this ICSharpContextActionDataProvider myProvider)
+    public static ICSharpTreeNode GetTopLevelNode([NotNull] this ICSharpContextActionDataProvider provider)
     {
-      var selectedElement = myProvider.GetSelectedElement<ICSharpTreeNode>();
+      var selectedElement = provider.GetSelectedElement<ICSharpTreeNode>();
       return StatementUtil.GetContainingStatementLike(selectedElement);
     }
 
     [CanBeNull]
-    public static IInvocationExpression GetInnerInvocation(this IInvocationExpression invocation)
+    public static IInvocationExpression GetInnerInvocation([NotNull] this IInvocationExpression invocation)
     {
       var referenceExpression = invocation.InvokedExpression as IReferenceExpression;
       return referenceExpression?.QualifierExpression as IInvocationExpression;
