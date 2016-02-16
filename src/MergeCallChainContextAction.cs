@@ -21,10 +21,11 @@ namespace BananaSplit
   public abstract class MergeCallChainContextAction : ContextActionBase
   {
     [NotNull] private readonly ICSharpContextActionDataProvider myProvider;
-    
 
     [CanBeNull] private IInvocationExpression myOuterInvocation;
     [CanBeNull] private ICSharpIdentifier myExisingLambdaParameterName;
+
+    private int myCallsCount;
 
     protected MergeCallChainContextAction([NotNull] ICSharpContextActionDataProvider provider)
     {
@@ -59,8 +60,7 @@ namespace BananaSplit
       return myOuterInvocation != null;
     }
 
-    [NotNull]
-    protected abstract void Merge([NotNull] ILambdaExpression lambda, [NotNull] ILambdaExpression accumulatorLambda);
+    protected abstract void Merge([NotNull] ILambdaExpression accumulatorLambda, [NotNull] ILambdaExpression lambda);
 
     [CanBeNull]
     private IInvocationExpression FindChain([NotNull] ITreeNode topLevelNode)
@@ -75,13 +75,13 @@ namespace BananaSplit
 
     private bool MatchChain([NotNull] IInvocationExpression invocation)
     {
-      int currentInvocationsCount = 0;
+      myCallsCount = 0;
 
       while (true)
       {
         if (!MatchInvocation(invocation, checkValidity: true)) break;
 
-        currentInvocationsCount = currentInvocationsCount + 1;
+        myCallsCount = myCallsCount + 1;
 
         var lambdaParameterName = ExtractLambdaParameterName(invocation);
         if (lambdaParameterName != null)
@@ -95,7 +95,7 @@ namespace BananaSplit
         invocation = innerInvocation;
       }
 
-      return currentInvocationsCount >= 2;
+      return myCallsCount >= 2;
     }
 
     private bool MatchInvocation([NotNull] IInvocationExpression invocation, bool checkValidity)
@@ -135,41 +135,41 @@ namespace BananaSplit
 
     private void MergeInvocations([NotNull] IInvocationExpression outerInvocation)
     {
-      // TODO Change merge direction from `outer-to-inner` to `inner-to-outer`
-
       var outerInvocationArgument = outerInvocation.Arguments[0];
 
-      var accumulateLambda = outerInvocationArgument.Value as ILambdaExpression;
-      if (accumulateLambda == null)
+      var outerLambda = outerInvocationArgument.Value as ILambdaExpression;
+      if (outerLambda == null)
       {
         var methodGroup = (IReferenceExpression)outerInvocationArgument.Value;
 
-        accumulateLambda = CreateLambdaFromMethodGroup(methodGroup, outerInvocation.InvokedExpression);
+        outerLambda = CreateLambdaFromMethodGroup(methodGroup, outerInvocation.InvokedExpression);
       }
 
-      var parameter = accumulateLambda.ParameterDeclarations[0];
+      var lambdas = new ILambdaExpression[myCallsCount];
+      lambdas[myCallsCount - 1] = outerLambda;
+
+      var parameter = outerLambda.ParameterDeclarations[0];
 
       var currentInvocation = outerInvocation;
-      var invokedExpression = currentInvocation.InvokedExpression;
 
-      while (true)
+      for (int i = myCallsCount - 2; i >= 0; i--)
       {
-        currentInvocation = currentInvocation.GetInnerInvocation();
+        currentInvocation = currentInvocation.GetInnerInvocation().NotNull();
 
-        if (currentInvocation == null) break;
-
-        if (!MatchInvocation(currentInvocation, checkValidity: false)) break;
-
-        var currentLambda = ExtractLambda(currentInvocation, parameter.NameIdentifier);
-
-        Merge(currentLambda, accumulateLambda);
-
-        invokedExpression = currentInvocation.InvokedExpression;
+        lambdas[i] = ExtractLambda(currentInvocation, parameter.NameIdentifier);
       }
 
-      outerInvocationArgument.SetValue(accumulateLambda);
+      var innerMostInvokedExpression = currentInvocation.InvokedExpression;
 
-      outerInvocation.SetInvokedExpression(invokedExpression);
+      var accumulatorLambda = lambdas[0];
+
+      for (int i = 1; i < lambdas.Length; i++)
+      {
+        Merge(accumulatorLambda, lambdas[i]);
+      }
+
+      outerInvocationArgument.SetValue(accumulatorLambda);
+      outerInvocation.SetInvokedExpression(innerMostInvokedExpression);
     }
 
     private ILambdaExpression CreateLambdaFromMethodGroup(

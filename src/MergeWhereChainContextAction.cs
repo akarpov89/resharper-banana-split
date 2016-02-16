@@ -21,9 +21,9 @@ namespace BananaSplit
 
     protected override string ChainedMethodName => "Where";
 
-    protected override void Merge(ILambdaExpression lambda, ILambdaExpression accumulatorLambda)
+    protected override void Merge(ILambdaExpression accumulatorLambda, ILambdaExpression lambda)
     {
-      var newBody = Factory.CreateExpression("$0 && $1", lambda.BodyExpression, accumulatorLambda.BodyExpression);
+      var newBody = Factory.CreateExpression("$0 && $1", accumulatorLambda.BodyExpression, lambda.BodyExpression);
       accumulatorLambda.SetBodyExpression(newBody);
     }
   }
