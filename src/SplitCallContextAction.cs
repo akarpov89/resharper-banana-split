@@ -28,6 +28,8 @@ namespace BananaSplit
     [NotNull] private readonly ICSharpContextActionDataProvider myProvider;
     [NotNull] private readonly CSharpElementFactory myFactory;
 
+    [CanBeNull] private IInvocationExpression myChainedInvocation;
+
     public SplitCallContextAction([NotNull] ICSharpContextActionDataProvider provider)
     {
       myProvider = provider;
@@ -38,8 +40,7 @@ namespace BananaSplit
 
     protected override Action<ITextControl> ExecutePsiTransaction(ISolution solution, IProgressIndicator progress)
     {
-      var topLevelNode = myProvider.GetTopLevelNode().NotNull();
-      var invocation = FindInvocationChain(topLevelNode).NotNull();
+      var invocation = myChainedInvocation.NotNull();
 
       invocation = ((IInvocationExpression) StatementUtil.EnsureStatementExpression(invocation)).NotNull();
 
@@ -57,7 +58,9 @@ namespace BananaSplit
       var topLevelNode = myProvider.GetTopLevelNode();
       if (topLevelNode == null) return false;
 
-      return FindInvocationChain(topLevelNode) != null;
+      myChainedInvocation = FindInvocationChain(topLevelNode);
+
+      return myChainedInvocation != null;
     }
 
     [CanBeNull]
