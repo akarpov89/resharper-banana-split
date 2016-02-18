@@ -23,7 +23,7 @@ namespace BananaSplit
     [NotNull] private readonly ICSharpContextActionDataProvider myProvider;
 
     [CanBeNull] private IInvocationExpression myOuterInvocation;
-    [CanBeNull] private ICSharpIdentifier myExisingLambdaParameterName;
+    [CanBeNull] private ICSharpIdentifier myExistingLambdaParameterName;
 
     private int myCallsCount;
 
@@ -51,7 +51,7 @@ namespace BananaSplit
     public sealed override bool IsAvailable(IUserDataHolder cache)
     {
       myOuterInvocation = null;
-      myExisingLambdaParameterName = null;
+      myExistingLambdaParameterName = null;
 
       var topLevelNode = myProvider.GetTopLevelNode();
       if (topLevelNode == null) return false;
@@ -86,7 +86,7 @@ namespace BananaSplit
         var lambdaParameterName = ExtractLambdaParameterName(invocation);
         if (lambdaParameterName != null)
         {
-          myExisingLambdaParameterName = lambdaParameterName;
+          myExistingLambdaParameterName = lambdaParameterName;
         }
 
         var innerInvocation = invocation.GetInnerInvocation();
@@ -175,9 +175,9 @@ namespace BananaSplit
     private ILambdaExpression CreateLambdaFromMethodGroup(
       [NotNull] IReferenceExpression methodGroup, [NotNull] ITreeNode collectionNameSource)
     {
-      if (myExisingLambdaParameterName != null)
+      if (myExistingLambdaParameterName != null)
       {
-        return (ILambdaExpression)Factory.CreateExpression("$0 => $1($0)", myExisingLambdaParameterName, methodGroup);
+        return (ILambdaExpression)Factory.CreateExpression("$0 => $1($0)", myExistingLambdaParameterName, methodGroup);
       }
 
       var lambda = (ILambdaExpression)Factory.CreateExpression("$0 => $1($0)", "__", methodGroup);
