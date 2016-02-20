@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using JetBrains.Application.Progress;
+using JetBrains.DocumentManagers.Transactions;
 using JetBrains.ProjectModel;
 using JetBrains.ReSharper.Feature.Services.ContextActions;
 using JetBrains.ReSharper.Feature.Services.CSharp.Analyses.Bulbs;
@@ -55,7 +56,7 @@ namespace BananaSplit
         block.RemoveStatement((ICSharpStatement) statements[i]);
       }
 
-      var lastStatementCoords = Utils.GetPositionAfterStatement(statements[statements.Count - 1], myProvider.Document);
+      var lastStatementCoords = DocumentHelper.GetPositionAfterStatement(statements[statements.Count - 1], myProvider.Document);
 
       return textControl =>
       {
@@ -75,7 +76,7 @@ namespace BananaSplit
 
     public override bool IsAvailable(IUserDataHolder cache)
     {
-      if (!Utils.IsWholeStatementRangeSelected(myProvider.Selection, myProvider.Document)) return false;
+      if (!DocumentHelper.IsWholeStatementRangeSelected(myProvider.Selection, myProvider.Document)) return false;
 
       var block = myProvider.GetSelectedElement<IBlock>();
       var statementsRange = block?.GetStatementsRange(myProvider.SelectedTreeRange);

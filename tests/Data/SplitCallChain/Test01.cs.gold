@@ -1,0 +1,11 @@
+﻿using System.Linq;
+
+public class C
+{
+  void M(string s)
+  {
+    var array = s.ToArray();
+    var enumerable = array.Select(x => x);
+    int count = enumerable.Count();{caret}
+  }
+}

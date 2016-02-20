@@ -45,7 +45,7 @@ namespace BananaSplit
 
       var hotspotInfo = CreateHostHotspotInfo();
 
-      return Utils.ExecuteHotspotSession(solution, new[] {hotspotInfo});
+      return HotspotHelper.ExecuteHotspotSession(solution, new[] {hotspotInfo});
     }
 
     public sealed override bool IsAvailable(IUserDataHolder cache)
@@ -183,7 +183,7 @@ namespace BananaSplit
       var lambda = (ILambdaExpression)Factory.CreateExpression("$0 => $1($0)", "__", methodGroup);
 
       var lambdaParameter = lambda.ParameterDeclarations[0].DeclaredElement;
-      var suggestedName = Utils.SuggestCollectionItemName(collectionNameSource, lambdaParameter);
+      var suggestedName = NameHelper.SuggestCollectionItemName(collectionNameSource, lambdaParameter);
 
       lambda.ParameterDeclarations[0].SetName(suggestedName);
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using JetBrains.Application.Progress;
+using JetBrains.DocumentModel;
 using JetBrains.ProjectModel;
 using JetBrains.ReSharper.Feature.Services.ContextActions;
 using JetBrains.ReSharper.Feature.Services.CSharp.Analyses.Bulbs;
@@ -16,6 +17,7 @@ using JetBrains.ReSharper.Psi.CSharp.Util;
 using JetBrains.ReSharper.Psi.Tree;
 using JetBrains.TextControl;
 using JetBrains.Util;
+using JetBrains.Util.dataStructures.TypedIntrinsics;
 
 namespace BananaSplit
 {
@@ -50,7 +52,11 @@ namespace BananaSplit
 
       var hotspots = CreateHotspotsForNewVariables(invocation, declarations);
 
-      return Utils.ExecuteHotspotSession(solution, hotspots);
+      var invocationLine = DocumentHelper.GetNodeEndLine(invocation, myProvider.Document);
+
+      Action<ITextControl> onFinish = textControl => textControl.MoveCaretToEndOfLine(invocationLine);
+
+      return HotspotHelper.ExecuteHotspotSession(solution, hotspots, onFinish);
     }
 
     public override bool IsAvailable(IUserDataHolder cache)
@@ -117,7 +123,7 @@ namespace BananaSplit
       [NotNull] JetHashSet<string> names)
     {
       // TODO: Use Naming.SuggestionManager
-      string variableName = Utils.NaiveSuggestVariableName(expression, names);
+      string variableName = NameHelper.NaiveSuggestVariableName(expression, names);
 
       var initializer = myFactory.CreateVariableInitializer(expression);
       var declaration = myFactory.CreateStatement("var $0 = $1;", variableName, initializer);
