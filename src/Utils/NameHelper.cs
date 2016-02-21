@@ -11,22 +11,6 @@ namespace BananaSplit
 {
   internal static class NameHelper
   {
-    public static string NaiveSuggestVariableName(
-      [NotNull] IInvocationExpression expression, [NotNull] JetHashSet<string> names)
-    {
-      var methodName = ((IReferenceExpression) expression.InvokedExpression).NameIdentifier.Name.Decapitalize();
-
-      var variableName = methodName;
-
-      for (int i = 1; names.Contains(variableName); i++)
-      {
-        variableName = methodName + i.ToString();
-      }
-
-      names.Add(variableName);
-      return variableName;
-    }
-
     public static string SuggestCollectionItemName(
       [NotNull] ITreeNode collectionNameSource, [NotNull] IDeclaredElement itemNameTarget)
     {
@@ -46,6 +30,39 @@ namespace BananaSplit
       collection.Prepare(itemNameTarget, new SuggestionOptions
       {
         UniqueNameContext = collectionNameSource.GetContainingNode<ITypeMemberDeclaration>()
+      });
+
+      return collection.FirstName();
+    }
+
+    public static string SuggestVariableName(
+      [NotNull] ITreeNode nameSource, [NotNull] IDeclaredElement variable, [NotNull] IType variableType)
+    {
+      var psiServices = nameSource.GetPsiServices();
+      var suggestionManager = psiServices.Naming.Suggestion;
+
+      var collection = suggestionManager.CreateEmptyCollection(
+        PluralityKinds.Unknown, nameSource.Language, true, nameSource);
+
+      collection.Add(nameSource, new EntryOptions
+      {
+        SubrootPolicy = SubrootPolicy.Decompose,
+        PredefinedPrefixPolicy = PredefinedPrefixPolicy.Remove,
+        PluralityKind = PluralityKinds.Unknown
+      });
+
+      if (variableType.IsResolved)
+      {
+        collection.Add(variableType, new EntryOptions
+        {
+          PluralityKind = PluralityKinds.Single,
+          SubrootPolicy = SubrootPolicy.Decompose
+        });
+      }
+
+      collection.Prepare(variable, new SuggestionOptions
+      {
+        UniqueNameContext = nameSource.GetContainingNode<ITypeMemberDeclaration>()
       });
 
       return collection.FirstName();

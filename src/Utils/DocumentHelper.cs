@@ -44,16 +44,5 @@ namespace BananaSplit
       var coords = document.GetCoordsByOffset(endOffset);
       return coords.Line;
     }
-
-    public static Int32<DocLine> Increment(this Int32<DocLine> line, int increment)
-    {
-      do
-      {
-        line = line.Plus1();
-        --increment;
-      } while (increment > 0);
-
-      return line;
-    }
   }
 }
