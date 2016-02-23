@@ -1,15 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using JetBrains.Application.Progress;
-using JetBrains.DocumentModel;
 using JetBrains.ProjectModel;
 using JetBrains.ReSharper.Feature.Services.ContextActions;
 using JetBrains.ReSharper.Feature.Services.CSharp.Analyses.Bulbs;
 using JetBrains.ReSharper.Feature.Services.CSharp.ContextActions;
-using JetBrains.ReSharper.Feature.Services.CSharp.TypeSuggestion;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Hotspots;
-using JetBrains.ReSharper.Feature.Services.LiveTemplates.Macros;
-using JetBrains.ReSharper.Feature.Services.LiveTemplates.Macros.Implementations;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Templates;
 using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.CSharp;
@@ -48,10 +45,12 @@ namespace BananaSplit
       invocation = ((IInvocationExpression) StatementUtil.EnsureStatementExpression(invocation)).NotNull();
 
       var declarations = new LocalList<IDeclarationStatement>(myInvocationsCount - 1);
-      SplitInvocation(invocation, ref declarations);
+      var variableNameSuggestions = new LocalList<IList<string>>(myInvocationsCount - 1);
+
+      SplitInvocation(invocation, ref declarations, ref variableNameSuggestions);
       InsertDeclarations(invocation, ref declarations);
 
-      var hotspots = CreateHotspotsForNewVariables(invocation, ref declarations);
+      var hotspots = CreateHotspots(invocation, ref declarations, ref variableNameSuggestions);
 
       var invocationLine = DocumentHelper.GetNodeEndLine(invocation, myProvider.Document);
 
@@ -99,15 +98,16 @@ namespace BananaSplit
 
     private void SplitInvocation(
       [NotNull] IInvocationExpression invocation,
-      ref LocalList<IDeclarationStatement> declarations)
+      ref LocalList<IDeclarationStatement> declarations,
+      ref LocalList<IList<string>> variableNameSuggestions)
     {
       var innerInvocation = invocation.GetInnerInvocation();
       if (innerInvocation == null) return;
 
       var returnType = innerInvocation.Type();
 
-      SplitInvocation(innerInvocation, ref declarations);
-      var identifier = AddDeclaration(innerInvocation, returnType, ref declarations);
+      SplitInvocation(innerInvocation, ref declarations, ref variableNameSuggestions);
+      var identifier = AddDeclaration(innerInvocation, returnType, ref declarations, ref variableNameSuggestions);
 
       SetInvocationTarget(invocation, identifier);
     }
@@ -116,21 +116,22 @@ namespace BananaSplit
     private string AddDeclaration(
       [NotNull] IInvocationExpression invocation,
       [NotNull] IType variableType,
-      ref LocalList<IDeclarationStatement> declarations)
+      ref LocalList<IDeclarationStatement> declarations,
+      ref LocalList<IList<string>> variableNameSuggestions)
     {
-      string variableName = "__";
-
       var initializer = myFactory.CreateVariableInitializer(invocation);
-      var declaration = (IDeclarationStatement) myFactory.CreateStatement("$0 $1 = $2;", variableType, variableName, initializer);
+      var declaration = (IDeclarationStatement) myFactory.CreateStatement("$0 $1 = $2;", variableType, "__", initializer);
 
       var variable = declaration.VariableDeclarations[0];
 
-      variableName = NameHelper.SuggestVariableName(invocation, variable.DeclaredElement, variableType);
-      variable.SetName(variableName);
+      var variableNames = NameHelper.SuggestVariableNames(invocation, variable.DeclaredElement, variableType);
+      variableNameSuggestions.Add(variableNames);
+
+      variable.SetName(variableNames[0]);
 
       declarations.Add(declaration);
 
-      return variableName;
+      return variableNames[0];
     }
 
     private void SetInvocationTarget([NotNull] IInvocationExpression invocation, [NotNull] string variableName)
@@ -154,8 +155,10 @@ namespace BananaSplit
     }
 
     [NotNull]
-    private static HotspotInfo[] CreateHotspotsForNewVariables(
-      [NotNull] IInvocationExpression invocation, ref LocalList<IDeclarationStatement> declarations)
+    private static HotspotInfo[] CreateHotspots(
+      [NotNull] IInvocationExpression invocation, 
+      ref LocalList<IDeclarationStatement> declarations,
+      ref LocalList<IList<string>> variableNameSuggestions)
     {
       bool isTypeInferenceSupported = invocation.IsCSharp3Supported();
 
@@ -166,11 +169,14 @@ namespace BananaSplit
         for (int i = 0; i < hotspots.Length - 2; i += 2)
         {
           hotspots[i] = CreateVariableTypeHotspot(declarations[i]);
-          hotspots[i + 1] = CreateVariableNameHotspot(declarations[i], declarations[i + 1]);
+          hotspots[i + 1] = CreateVariableNameHotspot(declarations[i], declarations[i + 1], variableNameSuggestions[i]);
         }
 
-        hotspots[hotspots.Length - 2] = CreateVariableTypeHotspot(declarations[declarations.Count - 1]);
-        hotspots[hotspots.Length - 1] = CreateVariableNameHotspot(declarations[declarations.Count - 1], invocation);
+        var lastDeclaration = declarations[declarations.Count - 1];
+        var lastSuggestions = variableNameSuggestions[variableNameSuggestions.Count - 1];
+
+        hotspots[hotspots.Length - 2] = CreateVariableTypeHotspot(lastDeclaration);
+        hotspots[hotspots.Length - 1] = CreateVariableNameHotspot(lastDeclaration, invocation, lastSuggestions);
 
         return hotspots;
       }
@@ -180,10 +186,13 @@ namespace BananaSplit
 
         for (int i = 0; i < hotspots.Length - 1; i++)
         {
-          hotspots[i] = CreateVariableNameHotspot(declarations[i], declarations[i + 1]);
+          hotspots[i] = CreateVariableNameHotspot(declarations[i], declarations[i + 1], variableNameSuggestions[i]);
         }
 
-        hotspots[hotspots.Length - 1] = CreateVariableNameHotspot(declarations[declarations.Count - 1], invocation);
+        var lastDeclaration = declarations[declarations.Count - 1];
+        var lastSuggestions = variableNameSuggestions[variableNameSuggestions.Count - 1];
+
+        hotspots[hotspots.Length - 1] = CreateVariableNameHotspot(lastDeclaration, invocation, lastSuggestions);
 
         return hotspots;
       }
@@ -205,18 +214,22 @@ namespace BananaSplit
 
     [NotNull]
     private static HotspotInfo CreateVariableNameHotspot(
-      [NotNull] IDeclarationStatement current, [NotNull] IDeclarationStatement next)
+      [NotNull] IDeclarationStatement current,
+      [NotNull] IDeclarationStatement next,
+      [NotNull] IList<string> nameSuggestions)
     {
       var nextInvocation = (IInvocationExpression) next.VariableDeclarations[0].Initial.FirstChild.NotNull();
-      return CreateVariableNameHotspot(current, nextInvocation);
+      return CreateVariableNameHotspot(current, nextInvocation, nameSuggestions);
     }
 
     [NotNull]
     private static HotspotInfo CreateVariableNameHotspot(
-      [NotNull] IDeclarationStatement current, [NotNull] IInvocationExpression nextInvocation)
+      [NotNull] IDeclarationStatement current, 
+      [NotNull] IInvocationExpression nextInvocation,
+      [NotNull] IList<string> nameSuggestions)
     {
       var name = current.VariableDeclarations[0].DeclaredName;
-      var templateField = new TemplateField(name, new MacroCallExpressionNew(new SuggestVariableNameMacroDef()), 0);
+      var templateField = new TemplateField(name, new NameSuggestionsExpression(nameSuggestions), 0);
 
       var first = current.VariableDeclarations[0].GetNameDocumentRange();
       var second = ((IReferenceExpression) nextInvocation.InvokedExpression).QualifierExpression.GetDocumentRange();

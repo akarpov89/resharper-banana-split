@@ -35,7 +35,8 @@ namespace BananaSplit
       return collection.FirstName();
     }
 
-    public static string SuggestVariableName(
+    [NotNull]
+    public static IList<string> SuggestVariableNames(
       [NotNull] ITreeNode nameSource, [NotNull] IDeclaredElement variable, [NotNull] IType variableType)
     {
       var psiServices = nameSource.GetPsiServices();
@@ -65,7 +66,7 @@ namespace BananaSplit
         UniqueNameContext = nameSource.GetContainingNode<ITypeMemberDeclaration>()
       });
 
-      return collection.FirstName();
+      return collection.AllNames();
     }
   }
 }
