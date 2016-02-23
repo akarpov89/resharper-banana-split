@@ -1,10 +1,12 @@
 ﻿using System;
 using JetBrains.Annotations;
 using JetBrains.Application.Progress;
+using JetBrains.DocumentModel;
 using JetBrains.ProjectModel;
 using JetBrains.ReSharper.Feature.Services.ContextActions;
 using JetBrains.ReSharper.Feature.Services.CSharp.Analyses.Bulbs;
 using JetBrains.ReSharper.Feature.Services.CSharp.ContextActions;
+using JetBrains.ReSharper.Feature.Services.CSharp.TypeSuggestion;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Hotspots;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Macros;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Macros.Implementations;
@@ -119,7 +121,7 @@ namespace BananaSplit
       string variableName = "__";
 
       var initializer = myFactory.CreateVariableInitializer(invocation);
-      var declaration = (IDeclarationStatement) myFactory.CreateStatement("var $0 = $1;", variableName, initializer);
+      var declaration = (IDeclarationStatement) myFactory.CreateStatement("$0 $1 = $2;", variableType, variableName, initializer);
 
       var variable = declaration.VariableDeclarations[0];
 
@@ -155,28 +157,62 @@ namespace BananaSplit
     private static HotspotInfo[] CreateHotspotsForNewVariables(
       [NotNull] IInvocationExpression invocation, ref LocalList<IDeclarationStatement> declarations)
     {
-      var hotspots = new HotspotInfo[declarations.Count];
+      bool isTypeInferenceSupported = invocation.IsCSharp3Supported();
 
-      for (int i = 0; i < declarations.Count - 1; i++)
+      if (isTypeInferenceSupported)
       {
-        hotspots[i] = CreateHotspotForVariable(declarations[i], declarations[i + 1]);
+        var hotspots = new HotspotInfo[declarations.Count * 2];
+
+        for (int i = 0; i < hotspots.Length - 2; i += 2)
+        {
+          hotspots[i] = CreateVariableTypeHotspot(declarations[i]);
+          hotspots[i + 1] = CreateVariableNameHotspot(declarations[i], declarations[i + 1]);
+        }
+
+        hotspots[hotspots.Length - 2] = CreateVariableTypeHotspot(declarations[declarations.Count - 1]);
+        hotspots[hotspots.Length - 1] = CreateVariableNameHotspot(declarations[declarations.Count - 1], invocation);
+
+        return hotspots;
       }
+      else
+      {
+        var hotspots = new HotspotInfo[declarations.Count];
 
-      hotspots[hotspots.Length - 1] = CreateHotspotForVariable(declarations[declarations.Count - 1], invocation);
+        for (int i = 0; i < hotspots.Length - 1; i++)
+        {
+          hotspots[i] = CreateVariableNameHotspot(declarations[i], declarations[i + 1]);
+        }
 
-      return hotspots;
+        hotspots[hotspots.Length - 1] = CreateVariableNameHotspot(declarations[declarations.Count - 1], invocation);
+
+        return hotspots;
+      }
     }
 
     [NotNull]
-    private static HotspotInfo CreateHotspotForVariable(
+    private static HotspotInfo CreateVariableTypeHotspot([NotNull] IDeclarationStatement declaration)
+    {
+      var variableDeclaration = declaration.VariableDeclarations[0];
+      var variableType = variableDeclaration.TypeUsage;
+
+      var typeText = variableType.GetText();
+      var typeRange = variableType.GetDocumentRange();
+      
+      var templateField = new TemplateField(typeText, new NameSuggestionsExpression(new[] {typeText, "var"}), 0);
+
+      return new HotspotInfo(templateField, typeRange);
+    }
+
+    [NotNull]
+    private static HotspotInfo CreateVariableNameHotspot(
       [NotNull] IDeclarationStatement current, [NotNull] IDeclarationStatement next)
     {
       var nextInvocation = (IInvocationExpression) next.VariableDeclarations[0].Initial.FirstChild.NotNull();
-      return CreateHotspotForVariable(current, nextInvocation);
+      return CreateVariableNameHotspot(current, nextInvocation);
     }
 
     [NotNull]
-    private static HotspotInfo CreateHotspotForVariable(
+    private static HotspotInfo CreateVariableNameHotspot(
       [NotNull] IDeclarationStatement current, [NotNull] IInvocationExpression nextInvocation)
     {
       var name = current.VariableDeclarations[0].DeclaredName;
