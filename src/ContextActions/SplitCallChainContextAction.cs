@@ -7,6 +7,8 @@ using JetBrains.ReSharper.Feature.Services.ContextActions;
 using JetBrains.ReSharper.Feature.Services.CSharp.Analyses.Bulbs;
 using JetBrains.ReSharper.Feature.Services.CSharp.ContextActions;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Hotspots;
+using JetBrains.ReSharper.Feature.Services.LiveTemplates.Macros;
+using JetBrains.ReSharper.Feature.Services.LiveTemplates.Macros.Implementations;
 using JetBrains.ReSharper.Feature.Services.LiveTemplates.Templates;
 using JetBrains.ReSharper.Psi;
 using JetBrains.ReSharper.Psi.CSharp;
@@ -125,6 +127,9 @@ namespace BananaSplit
       var variable = declaration.VariableDeclarations[0];
 
       var variableNames = NameHelper.SuggestVariableNames(invocation, variable.DeclaredElement, variableType);
+
+      NameHelper.EnsureFirstSuggestionIsUnique(variableNames, ref variableNameSuggestions);
+
       variableNameSuggestions.Add(variableNames);
 
       variable.SetName(variableNames[0]);
@@ -166,10 +171,10 @@ namespace BananaSplit
       {
         var hotspots = new HotspotInfo[declarations.Count * 2];
 
-        for (int i = 0; i < hotspots.Length - 2; i += 2)
+        for (int i = 0; i < declarations.Count - 1; i++)
         {
-          hotspots[i] = CreateVariableTypeHotspot(declarations[i]);
-          hotspots[i + 1] = CreateVariableNameHotspot(declarations[i], declarations[i + 1], variableNameSuggestions[i]);
+          hotspots[2 * i] = CreateVariableTypeHotspot(declarations[i]);
+          hotspots[2 * i + 1] = CreateVariableNameHotspot(declarations[i], declarations[i + 1], variableNameSuggestions[i]);
         }
 
         var lastDeclaration = declarations[declarations.Count - 1];
@@ -206,7 +211,7 @@ namespace BananaSplit
 
       var typeText = variableType.GetText();
       var typeRange = variableType.GetDocumentRange();
-      
+
       var templateField = new TemplateField(typeText, new NameSuggestionsExpression(new[] {typeText, "var"}), 0);
 
       return new HotspotInfo(templateField, typeRange);

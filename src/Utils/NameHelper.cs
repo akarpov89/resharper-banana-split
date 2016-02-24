@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using JetBrains.ReSharper.Psi;
@@ -67,6 +68,58 @@ namespace BananaSplit
       });
 
       return collection.AllNames();
+    }
+
+    public static void EnsureFirstSuggestionIsUnique(
+      [NotNull] IList<string> suggestions, ref LocalList<IList<string>> previousSuggestions)
+    {
+      if (previousSuggestions.Count == 0) return;
+
+      int uniqueIndex = FindIndexOfFirstUniqueSuggestion(suggestions, ref previousSuggestions);
+
+      if (uniqueIndex == 0) return;
+
+      if (uniqueIndex > 0)
+      {
+        suggestions.Swap(0, uniqueIndex);
+        return;
+      }
+
+      MakeFirstSuggestionUniqueWithNumericSuffix(suggestions, ref previousSuggestions);
+    }
+
+    private static int FindIndexOfFirstUniqueSuggestion(
+      [NotNull] IList<string> suggestions, ref LocalList<IList<string>> previousSuggestions)
+    {
+      for (int index = 0; index < suggestions.Count; index++)
+      {
+        string currentSuggestion = suggestions[index];
+
+        bool isUnique = !previousSuggestions.Any(previous => previous[0] == currentSuggestion);
+
+        if (isUnique) return index;
+      }
+
+      return -1;
+    }
+
+    private static void MakeFirstSuggestionUniqueWithNumericSuffix(
+      [NotNull] IList<string> suggestions, ref LocalList<IList<string>> previousSuggestions)
+    {
+      string originalSuggestion = suggestions[0];
+
+      for (int counter = 1;; counter++)
+      {
+        string suggestion = originalSuggestion + counter.ToString();
+
+        bool isUnique = !previousSuggestions.Any(previous => previous[0] == suggestion);
+
+        if (isUnique)
+        {
+          suggestions[0] = suggestion;
+          return;
+        }
+      }
     }
   }
 }

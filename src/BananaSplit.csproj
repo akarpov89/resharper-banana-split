@@ -178,6 +178,7 @@
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Utils\CollectionUtils.cs" />
     <Compile Include="Utils\DocumentHelper.cs" />
     <Compile Include="Utils\HotspotHelper.cs" />
     <Compile Include="ContextActions\InlineCallsContextAction.cs" />
