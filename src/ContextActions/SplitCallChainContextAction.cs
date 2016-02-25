@@ -212,7 +212,9 @@ namespace BananaSplit
       var typeText = variableType.GetText();
       var typeRange = variableType.GetDocumentRange();
 
-      var templateField = new TemplateField(typeText, new NameSuggestionsExpression(new[] {typeText, "var"}), 0);
+      var uniqueFieldName = typeRange.TextRange.StartOffset.ToString();
+
+      var templateField = new TemplateField(uniqueFieldName, new NameSuggestionsExpression(new[] {typeText, "var"}), 0);
 
       return new HotspotInfo(templateField, typeRange);
     }
