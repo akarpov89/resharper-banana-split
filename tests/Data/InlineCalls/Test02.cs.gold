@@ -1,0 +1,9 @@
+﻿using System.Linq;
+
+public class C
+{
+  void M(string s)
+  {
+    int count = s.ToArray().Select(x => x).Where(x => true).Count();{caret}
+  }
+}

@@ -181,6 +181,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InlineCallsTest.cs" />
     <Compile Include="SplitCallChainTest.cs" />
     <Compile Include="TestEnvironment.cs" />
   </ItemGroup>

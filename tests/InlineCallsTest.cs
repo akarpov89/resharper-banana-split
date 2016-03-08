@@ -3,11 +3,12 @@ using NUnit.Framework;
 
 namespace BananaSplit.Tests
 {
+#if SELECTION_FIXED
   [TestFixture]
-  public class SplitCallChainTest : CSharpContextActionExecuteTestBase<SplitCallChainContextAction>
+  public class InlineCallsTest : CSharpContextActionExecuteTestBase<InlineCallsContextAction>
   {
-    protected override string ExtraPath => "SplitCallChain";
-    protected override string RelativeTestDataPath => "SplitCallChain";
+    protected override string ExtraPath => "InlineCalls";
+    protected override string RelativeTestDataPath => "InlineCalls";
 
     [Test] public void Test01() => DoNamedTest();
 
@@ -19,4 +20,5 @@ namespace BananaSplit.Tests
 
     [Test] public void Test05() => DoNamedTest();
   }
+#endif
 }
