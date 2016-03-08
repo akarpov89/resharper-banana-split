@@ -76,7 +76,9 @@ namespace BananaSplit
 
     public override bool IsAvailable(IUserDataHolder cache)
     {
-      if (!DocumentHelper.IsWholeStatementRangeSelected(myProvider.Selection, myProvider.Document)) return false;
+      var selection = myProvider.DocumentSelection.TextRange;
+
+      if (!DocumentHelper.IsWholeStatementRangeSelected(selection, myProvider.Document)) return false;
 
       var block = myProvider.GetSelectedElement<IBlock>();
       var statementsRange = block?.GetStatementsRange(myProvider.SelectedTreeRange);

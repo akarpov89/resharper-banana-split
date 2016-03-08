@@ -15,7 +15,7 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="output\$configuration$\10.0\**\BananaSplit.dll" target="dotFiles\" />
-    <file src="output\$configuration$\10.0\**\BananaSplit.pdb" target="dotFiles\" />    
+    <file src="output\$configuration$\10.1\**\BananaSplit.dll" target="dotFiles\" />
+    <file src="output\$configuration$\10.1\**\BananaSplit.pdb" target="dotFiles\" />    
   </files>
 </package>

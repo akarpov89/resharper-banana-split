@@ -119,8 +119,7 @@ namespace BananaSplit
       ref LocalList<IDeclarationStatement> declarations,
       ref LocalList<IList<string>> variableNameSuggestions)
     {
-      var initializer = myFactory.CreateVariableInitializer(invocation);
-      var declaration = (IDeclarationStatement) myFactory.CreateStatement("$0 $1 = $2;", variableType, "__", initializer);
+      var declaration = (IDeclarationStatement)myFactory.CreateStatement("$0 $1 = $2;", variableType, "__", invocation);
 
       var variable = declaration.VariableDeclarations[0];
 

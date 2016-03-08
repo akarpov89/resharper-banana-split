@@ -7,6 +7,6 @@ public class C
   {
     {selstart}char[] array = s.ToArray();
     IEnumerable<char> enumerable = array.Select(x => x);
-    int count = enumerable.Count();{selend}
+    int count = enumerable.Count();{selend}{caret}
   }
 }

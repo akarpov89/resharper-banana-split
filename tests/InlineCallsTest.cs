@@ -3,7 +3,7 @@ using NUnit.Framework;
 
 namespace BananaSplit.Tests
 {
-#if SELECTION_FIXED
+
   [TestFixture]
   public class InlineCallsTest : CSharpContextActionExecuteTestBase<InlineCallsContextAction>
   {
@@ -20,5 +20,5 @@ namespace BananaSplit.Tests
 
     [Test] public void Test05() => DoNamedTest();
   }
-#endif
+
 }
