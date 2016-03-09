@@ -34,9 +34,10 @@ namespace BananaSplit
       foreach (var referenceExpression in lambda.BodyExpression.Descendants<IReferenceExpression>())
       {
         var currentElement = referenceExpression.Reference.Resolve().DeclaredElement;
-        if (currentElement == null) continue;
 
-        if (currentElement.Equals(declaredElement))
+        if (declaredElement.Equals(currentElement) ||
+            referenceExpression.QualifierExpression == null && 
+            referenceExpression.NameIdentifier.Name == declaredElement.ShortName)
         {
           toReplace.Add(referenceExpression);
         }
